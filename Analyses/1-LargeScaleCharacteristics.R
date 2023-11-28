@@ -1,5 +1,8 @@
 info(logger, 'create denominator cohorts')
-cdm <- generateDenominatorCohortSet(cdm = cdm, name = "den", overwrite = TRUE)
+cdm <- generateDenominatorCohortSet(
+  cdm = cdm, name = "den", overwrite = TRUE,
+  ageGroup = c(ageStrata, list(c(0, 150))), sex = sex
+)
 cdm$den <- cdm$den %>%
   mutate(
     cohort_start_date = as.Date(cohort_start_date),
@@ -10,6 +13,7 @@ info(logger, 'summarise lsc')
 lsc <- cdm$den %>%
   summariseLargeScaleCharacteristics(
     window = list(c(0, Inf)),
+    cendorDate = "cohort_end_date",
     eventInWindow = c("condition_occurrence", "observation", "measurement", "procedure_occurrence", "device_exposure"),
     episodeInWindow = c("drug_exposure"),
     minimumFrequency = 0.005
