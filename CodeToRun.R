@@ -13,6 +13,7 @@ library(readr)
 library(IncidencePrevalence)
 library(PatientProfiles)
 library(zip)
+library(testthat)
 library(log4r)
 
 # Connect to database ----
