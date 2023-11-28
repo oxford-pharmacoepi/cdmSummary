@@ -13,7 +13,7 @@ info(logger, 'summarise lsc')
 lsc <- cdm$den %>%
   summariseLargeScaleCharacteristics(
     window = list(c(0, Inf)),
-    cendorDate = "cohort_end_date",
+    censorDate = "cohort_end_date",
     eventInWindow = c("condition_occurrence", "observation", "measurement", "procedure_occurrence", "device_exposure"),
     episodeInWindow = c("drug_exposure"),
     minimumFrequency = 0.005
