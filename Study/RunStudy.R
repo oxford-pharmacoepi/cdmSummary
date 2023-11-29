@@ -33,11 +33,18 @@ write.csv(
   row.names = FALSE
 )
 
-# objective 1 ----
+# analyses ----
+info(logger, 'SOURCE FUNCTIONS')
+source(here("Analyses", "functions.R"))
+
 info(logger, '1- LARGE SCALE CHARACTERISTICS')
 source(here("Analyses", "1-LargeScaleCharacteristics.R"))
 
+info(logger, '2- MONTHLY COUNTS')
+source(here("Analyses", "2-MonthlyCounts.R"))
+
 # export results ----
+info(logger, 'CREATE ZIP FILE')
 zip(
   zipfile = here(
     resultsFolder, paste0("cdmSummary-", cdmName(cdm), ".zip")
