@@ -100,40 +100,138 @@ server <- function(input, output, session) {
       ylim(0, 100) +
       geom_abline(intercept = 0, slope = 1)
   })
-  output$bar_reference <- renderUI({
-    choicesBar <- getChoices()
-    pickerInput(
-      inputId = "lsc_reference_bar", 
-      label = "Reference", 
-      choices = choicesBar, 
-      selected = choicesBar[1], 
-      multiple = FALSE
-    )
+  # output$bar_reference <- renderUI({
+  #   choicesBar <- getChoices()
+  #   pickerInput(
+  #     inputId = "lsc_reference_bar", 
+  #     label = "Reference", 
+  #     choices = choicesBar, 
+  #     selected = choicesBar[1], 
+  #     multiple = FALSE
+  #   )
+  # })
+  # output$lsc_bar <- renderPlotly({
+  #   x <- getLscTable()
+  #   colnames(x) <- gsub("<br>", "; ", colnames(x))
+  #   ref <- input$lsc_reference_bar
+  #   validate(need(!is.null(ref), "reference cant be null"))
+  #   print(ref)
+  #   print(colnames(x))
+  #   dat <- x %>%
+  #     arrange(desc(.data[[ref]])) %>%
+  #     head(100) %>%
+  #     mutate(id = row_number()) %>%
+  #     pivot_longer(!c("table_name", "variable", "id")) %>%
+  #     mutate(value = 100*value) %>%
+  #     mutate(concept = substr(x = .data$variable, start = 1, stop = 20))
+  #   labs <- dat %>%
+  #     select(id, concept) %>%
+  #     arrange(-id) %>%
+  #     distinct() %>%
+  #     pull(concept)
+  #   ggplot(dat, aes(x = -id, y = value, col = name)) +
+  #     geom_bar(stat = "identity") + 
+  #     scale_x_discrete(breaks=-(1:100), labels=labs) +
+  #     coord_flip() +
+  #     facet_grid(. ~ name)
+  # })
+  # summary tables ----
+  # followup ----
+  output$follow_plot <- renderPlotly({
+    follow %>%
+      filter(cdm_name %in% input$followup_cdm) %>%
+      rename("Weeks of observation" = obs_weeks) %>%
+      ggplot(aes(x = `Weeks of observation`, y = n)) +
+      geom_bar(stat="identity") + 
+      facet_wrap(vars(cdm_name), ncol = 2)
   })
-  output$lsc_bar <- renderPlotly({
-    x <- getLscTable()
-    colnames(x) <- gsub("<br>", "; ", colnames(x))
-    ref <- input$lsc_reference_bar
-    validate(need(!is.null(ref), "reference cant be null"))
-    print(ref)
-    print(colnames(x))
-    dat <- x %>%
-      arrange(desc(.data[[ref]])) %>%
-      head(100) %>%
-      mutate(id = row_number()) %>%
-      pivot_longer(!c("table_name", "variable", "id")) %>%
-      mutate(value = 100*value) %>%
-      mutate(concept = substr(x = .data$variable, start = 1, stop = 20))
-    labs <- dat %>%
-      select(id, concept) %>%
-      arrange(-id) %>%
-      distinct() %>%
-      pull(concept)
-    ggplot(dat, aes(x = -id, y = value, col = name)) +
-      geom_bar(stat = "identity") + 
-      scale_x_discrete(breaks=-(1:100), labels=labs) +
-      coord_flip() +
-      facet_grid(. ~ name)
+  # year and sex ----
+  output$year_sex_plot <- renderPlotly({
+    yearsex %>%
+      filter(cdm_name %in% input$year_sex_cdm) %>%
+      ggplot(aes(x = year_of_birth, y = n, col = sex)) +
+      geom_bar(stat="identity") + 
+      facet_wrap(cdm_name ~ sex)
+  })
+  # incident counts ----
+  output$plot_incident <- renderPlotly({
+    x <- incident %>%
+      filter(
+        cdm_name %in% input$incident_cdm & tab %in% input$incident_table
+      )
+    if (input$incident_y == "Normalised") {
+      x <- x %>%
+        group_by(tab, cdm_name) %>%
+        mutate(n = n / sum(n, na.rm = TRUE)) %>% 
+        ungroup()
+    }
+    if (length(input$incident_facet) == 0) {
+      x <- x %>% mutate(name = paste0(cdm_name, "; ", tab))
+      p <- ggplot(x, aes(x = date, y = n, col = name)) +
+        geom_line() +
+        geom_point()
+    } else if (length(input$incident_facet) == 2) {
+      x <- x %>% mutate(name = paste0(cdm_name, "; ", tab))
+      p <- ggplot(x, aes(x = date, y = n, col = name)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(vars(name)) + theme(legend.position="none")
+    } else if (length(input$incident_facet) == 1 && input$incident_facet == "cdm_name") {
+      p <- ggplot(x, aes(x = date, y = n, col = tab)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(vars(cdm_name))
+    } else if (length(input$incident_facet) == 1 && input$incident_facet == "table") {
+      p <- ggplot(x, aes(x = date, y = n, col = cdm_name)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(vars(tab))
+    }
+    p
+  })
+  # ongoing counts ----
+  output$plot_ongoing <- renderPlotly({
+    x <- ongoing %>%
+      filter(
+        cdm_name %in% input$ongoing_cdm & table %in% input$ongoing_table
+      )
+    if (input$ongoing_y == "Normalised") {
+      x <- x %>%
+        group_by(table, cdm_name) %>%
+        left_join(
+          ongoing %>%
+            filter(table == "observation_period") %>%
+            rename(den = n) %>%
+            select(-table),
+          by = c("ongoing_date", "cdm_name")
+        ) %>%
+        mutate(n = n / den) %>%
+        select(-den) %>%
+        ungroup()
+    }
+    if (length(input$ongoing_facet) == 0) {
+      x <- x %>% mutate(name = paste0(cdm_name, "; ", table))
+      p <- ggplot(x, aes(x = ongoing_date, y = n, col = name)) +
+        geom_line() +
+        geom_point()
+    } else if (length(input$ongoing_facet) == 2) {
+      x <- x %>% mutate(name = paste0(cdm_name, "; ", table))
+      p <- ggplot(x, aes(x = ongoing_date, y = n, col = name)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(vars(name)) + theme(legend.position="none")
+    } else if (length(input$ongoing_facet) == 1 && input$ongoing_facet == "cdm_name") {
+      p <- ggplot(x, aes(x = ongoing_date, y = n, col = table)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(vars(cdm_name))
+    } else if (length(input$ongoing_facet) == 1 && input$ongoing_facet == "table") {
+      p <- ggplot(x, aes(x = ongoing_date, y = n, col = cdm_name)) +
+        geom_line() +
+        geom_point() +
+        facet_wrap(vars(table))
+    }
+    p
   })
   # end ----
 }

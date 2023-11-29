@@ -13,12 +13,40 @@ ui <- dashboardPage(
         tabName = "snap"
       ),
       menuItem(
-        text = "Large scale characterisation",
-        tabName = "lsc"
+        text = "Demographics",
+        tabName = "demo",
+        menuSubItem(
+          text = "Follow-up", 
+          tabName = "followup"
+        ),
+        menuSubItem(
+          text = "Year of birth and sex", 
+          tabName = "year_sex"
+        )
+      ),
+      menuItem(
+        text = "Tables summary",
+        tabName = "tables"
+      ),
+      menuItem(
+        text = "Counts",
+        tabName = "counts", 
+        menuSubItem(
+          text = "Incident counts", 
+          tabName = "incident"
+        ), 
+        menuSubItem(
+          text = "Ongoing counts", 
+          tabName = "ongoing"
+        )
       ),
       menuItem(
         text = "Characteristics",
         tabName = "char"
+      ),
+      menuItem(
+        text = "Large scale characterisation",
+        tabName = "lsc"
       )
     )
   ),
@@ -111,6 +139,77 @@ ui <- dashboardPage(
         tags$hr(),
         downloadButton("char_download_table", "Download word table"),
         gt_output("char_table")
+      ),
+      # followup ----
+      tabItem(
+        tabName = "followup",
+        h3("Follow up distribution"),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "followup_cdm", label = "Database", choices = unique(follow$cdm_name), selected = unique(follow$cdm_name), multiple = TRUE, options = list(`actions-box` = TRUE))
+        ),
+        plotlyOutput("follow_plot")
+      ),
+      # year of birth ----
+      tabItem(
+        tabName = "year_sex",
+        h3("Year of birth and sex summary"),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "year_sex_cdm", label = "Database", choices = unique(yearsex$cdm_name), selected = unique(yearsex$cdm_name), multiple = TRUE, options = list(`actions-box` = TRUE))
+        ),
+        plotlyOutput("year_sex_plot")
+      ),
+      # tables ----
+      tabItem(
+        tabName = "tables",
+        h3("Summary of data in each table"),
+        datatable(sumTabs, options = list(scrollX = TRUE, pageLength = -1)) %>%
+          formatPercentage(c("percentage_in_observation", "percentage_individuals_with_record"), 1)
+      ),
+      # incidence counts ----
+      tabItem(
+        tabName = "incident",
+        h3("Incident counts per table"),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "incident_cdm", label = "cdm name", choices = unique(incident$cdm_name), selected = unique(incident$cdm_name), multiple = TRUE, options = list(`actions-box` = TRUE))
+        ),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "incident_table", label = "Table", choices = unique(incident$tab), selected = unique(incident$tab), multiple = TRUE, options = list(`actions-box` = TRUE))
+        ),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "incident_y", label = "Y axis", choices = c("Normalised", "Counts"), selected = "Counts", multiple = FALSE)
+        ),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "incident_facet", label = "Facet by", choices = c("cdm_name", "table"), selected = c("cdm_name", "table"), multiple = TRUE)
+        ),
+        plotlyOutput("plot_incident")
+      ),
+      # ongoing counts ----
+      tabItem(
+        tabName = "ongoing",
+        h3("Ongoing counts per table"),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "ongoing_cdm", label = "cdm name", choices = unique(ongoing$cdm_name), selected = unique(ongoing$cdm_name), multiple = TRUE, options = list(`actions-box` = TRUE))
+        ),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "ongoing_table", label = "Table", choices = unique(ongoing$table), selected = unique(ongoing$table), multiple = TRUE, options = list(`actions-box` = TRUE))
+        ),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "ongoing_y", label = "Y axis", choices = c("Normalised", "Counts"), selected = "Counts", multiple = FALSE)
+        ),
+        div(
+          style = "display: inline-block;vertical-align:top; width: 150px;",
+          pickerInput(inputId = "ongoing_facet", label = "Facet by", choices = c("cdm_name", "table"), selected = c("cdm_name", "table"), multiple = TRUE)
+        ),
+        plotlyOutput("plot_ongoing")
       )
       # end -----
     )

@@ -109,3 +109,52 @@ char <- purrr::map(char, readr::read_csv, show_col_types = FALSE) %>%
     age_group = factor(age_group, c("0 to 150", "0 to 19", "20 to 44", "45 to 54", "55 to 64", "65 to 74", "75 to 84", "85 to 150")),
     sex = factor(sex, c("Both", "Female", "Male"))
   )
+
+# followup ----
+follow <- results[stringr::str_detect(results, "followup")]
+follow <- purrr::map(follow, readr::read_csv, show_col_types = FALSE) %>%
+  bind_rows()
+
+# year and sex ----
+yearsex <- results[stringr::str_detect(results, "year_sex")]
+yearsex <- purrr::map(yearsex, readr::read_csv, show_col_types = FALSE) %>%
+  bind_rows() %>%
+  mutate(
+    sex = case_when(
+      gender_concept_id == 8507 ~ "Male",
+      gender_concept_id == 8532 ~ "Female",
+      TRUE ~ "Both"
+    )
+  ) %>%
+  filter(!is.na(year_of_birth)) %>%
+  select(-gender_concept_id)
+
+# summary tables ----
+sumTabs <- results[stringr::str_detect(results, "summary_counts")]
+sumTabs <- purrr::map(sumTabs, readr::read_csv, show_col_types = FALSE) %>%
+  bind_rows()
+sumTabs <- sumTabs %>%
+  inner_join(
+    sumTabs %>%
+      filter(table == "person") %>%
+      select(cdm_name, number_individuals = number_records),
+    by = "cdm_name"
+  ) %>%
+  mutate(
+    records_per_person = number_records / number_individuals,
+    percentage_individuals_with_record = number_persons / number_individuals,
+    percentage_in_observation = number_in_observation / number_records
+  ) %>%
+  select(cdm_name, table, number_records, number_concepts, number_persons, percentage_in_observation, records_per_person, percentage_individuals_with_record)
+
+# incident counts ----
+incident <- results[stringr::str_detect(results, "incident_counts")]
+incident <- purrr::map(incident, readr::read_csv, show_col_types = FALSE) %>%
+  bind_rows() %>%
+  mutate(date = as.Date(paste0(incidence_year, "/", incidence_month, "/01"))) %>%
+  select(-incidence_month, -incidence_year)
+
+# ongoing counts ----
+ongoing <- results[stringr::str_detect(results, "ongoing_counts")]
+ongoing <- purrr::map(ongoing, readr::read_csv, show_col_types = FALSE) %>%
+  bind_rows()
