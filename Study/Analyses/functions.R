@@ -96,7 +96,7 @@ monthlyIncident <- function(cdm, tab) {
     "condition_occurrence" = "condition_start_date",
     "observation" = "observation_date",
     "measurement" = "measurement_date",
-    "procedure_occurrence" = "procedure_start_date",
+    "procedure_occurrence" = "procedure_date",
     "device_exposure" = "device_exposure_start_date",
   )
   if (tab != "observation_period") {
@@ -113,7 +113,7 @@ monthlyIncident <- function(cdm, tab) {
       "incidence_year" = !!datepart("incidence_date", "year")
     ) %>%
     group_by(incidence_month, incidence_year) %>%
-    summarise(n = as.numierc(n()), .groups = "drop") %>%
+    summarise(n = as.numeric(n()), .groups = "drop") %>%
     collect()
   x <- x %>%
     union_all(
@@ -131,7 +131,6 @@ monthlyOngoing <- function(cdm, tab) {
     "observation_period" = "observation_period_start_date",
     "drug_exposure" = "drug_exposure_start_date",
     "condition_occurrence" = "condition_start_date",
-    "procedure_occurrence" = "procedure_start_date",
     "device_exposure" = "device_exposure_start_date",
   )
   dateE <- switch(
@@ -139,26 +138,25 @@ monthlyOngoing <- function(cdm, tab) {
     "observation_period" = "observation_period_start_date",
     "drug_exposure" = "drug_exposure_start_date",
     "condition_occurrence" = "condition_start_date",
-    "procedure_occurrence" = "procedure_start_date",
     "device_exposure" = "device_exposure_start_date",
   )
   if (tab != "observation_period") {
     x <- cdm[[tab]] %>%
-      addInObservation(indexDate = date) %>%
+      addInObservation(indexDate = dateS) %>%
       filter(in_observation == 1)
   } else {
     x <- cdm[[tab]]
   }
   x <- x %>%
-    rename("start_date" = all_of(dateS), "end_date" = all_of(dateE)) %>%
+    select("start_date" = all_of(dateS), "end_date" = all_of(dateE)) %>%
     mutate(
-      "start_date_month" = !!datepart("start_date", "month"),
-      "start_date_year" = !!datepart("start_date", "year"),
-      "end_date_month" = !!datepart("end_date", "month"),
-      "end_date_year" = !!datepart("end_date", "year")
+      "start_date_month" = as.numeric(!!datepart("start_date", "month")),
+      "start_date_year" = as.numeric(!!datepart("start_date", "year")),
+      "end_date_month" = as.numeric(!!datepart("end_date", "month")),
+      "end_date_year" = as.numeric(!!datepart("end_date", "year"))
     ) %>%
     group_by(start_date_month, start_date_year, end_date_month, end_date_year) %>%
-    summarise(n = as.numierc(n()), .groups = "drop") %>%
+    summarise(n = as.numeric(n()), .groups = "drop") %>%
     compute()
   time <- expand.grid(
     ongoing_month = 1:12,
@@ -170,7 +168,7 @@ monthlyOngoing <- function(cdm, tab) {
   )
   x <- x %>%
     mutate(id = 1) %>%
-    inner_join(time, copy = TRUE, by = "id", relationship = "many-to-one") %>%
+    inner_join(time, copy = TRUE, by = "id", relationship = "many-to-many") %>%
     filter(
       ongoing_month >= start_date_month,
       ongoing_year >= start_date_year,
@@ -178,8 +176,8 @@ monthlyOngoing <- function(cdm, tab) {
       ongoing_year <= end_date_year
     ) %>%
     group_by(ongoing_month, ongoing_year) %>%
-    summarise(n = sum(.data$n)) %>%
-    collect() %>%
+    summarise(n = sum(.data$n), .groups = "drop") %>%
+    collect()
   x <- x %>%
     union_all(
       x %>%
@@ -189,4 +187,40 @@ monthlyOngoing <- function(cdm, tab) {
     ) %>%
     mutate(n = if_else(n < 5, as.numeric(NA), .data$n))
   return(x)
+}
+summaryTable <- function(cdm, tab) {
+  date <- switch(
+    tab,
+    "observation_period" = "observation_period_start_date",
+    "drug_exposure" = "drug_exposure_start_date",
+    "condition_occurrence" = "condition_start_date",
+    "observation" = "observation_date",
+    "measurement" = "measurement_date",
+    "procedure_occurrence" = "procedure_date",
+    "device_exposure" = "device_exposure_start_date",
+  )
+  concept <- switch(
+    tab,
+    "observation_period" = "period_type_concept_id",
+    "drug_exposure" = "drug_concept_id",
+    "condition_occurrence" = "condition_concept_id",
+    "observation" = "observation_concept_id",
+    "measurement" = "measurement_concept_id",
+    "procedure_occurrence" = "procedure_concept_id",
+    "device_exposure" = "device_concept_id",
+  )
+  if (tab != "observation_period") {
+    x <- cdm[[tab]] %>%
+      addInObservation(indexDate = date)
+  } else {
+    x <- cdm[[tab]] %>% mutate(in_observation = 1)
+  }
+  x %>%
+    rename(concept_id = all_of(concept)) %>%
+    summarise(
+      number_records = n(),
+      number_concepts = n_distinct(concept_id),
+      number_persons = n_distinct(person_id)
+    ) %>%
+    collect()
 }
