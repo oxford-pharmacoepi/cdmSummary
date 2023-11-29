@@ -53,9 +53,13 @@ write.csv(
 info(logger, "follow-up summary")
 x <- cdm$observation_period %>%
   inner_join(cdm$person %>% select("person_id") %>% distinct(), by = "person_id") %>%
-  mutate(obs_time = !!datediff("observation_period_start_date", "observation_period_end_date"))
-x %>%
-  summarise(
-    number_observation_periods = n(),
-    number_persons = n_distinct(person_id)
-  )
+  mutate(obs_time = !!datediff("observation_period_start_date", "observation_period_end_date")) %>%
+  pull(obs_time)
+x <- tibble(obs_time = (x %% 7) + 1) %>%
+  group_by(obs_time) %>%
+  summarise(n = as.numeric(n()), .groups = "drop")
+write.csv(
+  x = x,
+  file = here("Results", paste0(cdmName(cdm), "_followup.csv")),
+  row.names = FALSE
+)

@@ -1,6 +1,6 @@
 # Parameters ----
 resultsFolder <- here("Results")
-ageStrata <- list(c(0,19), c(20,44), c(45,54), c(55,64), c(65,74), c(75,84), c(85,150))
+ageStrata <- list(c(0, 19), c(20, 39), c(40, 59), c(60, 79), c(80, 150))
 sex <- c("Both", "Female", "Male")
 
 # start log ----
