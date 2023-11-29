@@ -135,10 +135,10 @@ monthlyOngoing <- function(cdm, tab) {
   )
   dateE <- switch(
     tab,
-    "observation_period" = "observation_period_start_date",
-    "drug_exposure" = "drug_exposure_start_date",
-    "condition_occurrence" = "condition_start_date",
-    "device_exposure" = "device_exposure_start_date",
+    "observation_period" = "observation_period_end_date",
+    "drug_exposure" = "drug_exposure_end_date",
+    "condition_occurrence" = "condition_end_date",
+    "device_exposure" = "device_exposure_end_date",
   )
   if (tab != "observation_period") {
     x <- cdm[[tab]] %>%
@@ -149,6 +149,7 @@ monthlyOngoing <- function(cdm, tab) {
   }
   x <- x %>%
     select("start_date" = all_of(dateS), "end_date" = all_of(dateE)) %>%
+    filter(!is.na(end_date)) %>%
     mutate(
       "start_date_month" = as.numeric(!!datepart("start_date", "month")),
       "start_date_year" = as.numeric(!!datepart("start_date", "year")),
@@ -165,26 +166,20 @@ monthlyOngoing <- function(cdm, tab) {
       x %>% pull("end_date_year") %>% max()
     ),
     id = 1
-  )
+  ) %>%
+    mutate(ongoing_date = as.Date(paste0(ongoing_year, "/", ongoing_month, "/01"))) %>%
+    select(-ongoing_month, -ongoing_year)
   x <- x %>%
     mutate(id = 1) %>%
     inner_join(time, copy = TRUE, by = "id", relationship = "many-to-many") %>%
-    filter(
-      ongoing_month >= start_date_month,
-      ongoing_year >= start_date_year,
-      ongoing_month <= end_date_month,
-      ongoing_year <= end_date_year
+    mutate(
+      start_date = as.Date(paste0(start_date_year, "/", start_date_month, "/01")),
+      end_date = as.Date(paste0(end_date_year, "/", end_date_month, "/01"))
     ) %>%
-    group_by(ongoing_month, ongoing_year) %>%
+    filter(ongoing_date >= start_date & ongoing_date <= end_date) %>%
+    group_by(ongoing_date) %>%
     summarise(n = sum(.data$n), .groups = "drop") %>%
-    collect()
-  x <- x %>%
-    union_all(
-      x %>%
-        group_by(ongoing_year) %>%
-        summarise(n = sum(n), .groups = "drop") %>%
-        mutate(ongoing_month = as.numeric(NA))
-    ) %>%
+    collect() %>%
     mutate(n = if_else(n < 5, as.numeric(NA), .data$n))
   return(x)
 }
