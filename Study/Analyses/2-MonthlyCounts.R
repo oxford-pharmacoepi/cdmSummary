@@ -76,7 +76,7 @@ write.csv(
 x <- list()
 for (tab in c(
   "observation_period", "drug_exposure", "condition_occurrence", "observation",
-  "measurement", "procedure_occurrence", "device_exposure"
+  "measurement", "procedure_occurrence", "device_exposure", "person"
 )) {
   info(logger, paste0('summary ', tab))
   x[[tab]] <- summaryTable(cdm, tab)

@@ -189,16 +189,6 @@ monthlyOngoing <- function(cdm, tab) {
   return(x)
 }
 summaryTable <- function(cdm, tab) {
-  date <- switch(
-    tab,
-    "observation_period" = "observation_period_start_date",
-    "drug_exposure" = "drug_exposure_start_date",
-    "condition_occurrence" = "condition_start_date",
-    "observation" = "observation_date",
-    "measurement" = "measurement_date",
-    "procedure_occurrence" = "procedure_date",
-    "device_exposure" = "device_exposure_start_date",
-  )
   concept <- switch(
     tab,
     "observation_period" = "period_type_concept_id",
@@ -208,8 +198,18 @@ summaryTable <- function(cdm, tab) {
     "measurement" = "measurement_concept_id",
     "procedure_occurrence" = "procedure_concept_id",
     "device_exposure" = "device_concept_id",
+    "person" = "gender_concept_id"
   )
-  if (tab != "observation_period") {
+  if (!tab %in% c("observation_period", "person")) {
+    date <- switch(
+      tab,
+      "drug_exposure" = "drug_exposure_start_date",
+      "condition_occurrence" = "condition_start_date",
+      "observation" = "observation_date",
+      "measurement" = "measurement_date",
+      "procedure_occurrence" = "procedure_date",
+      "device_exposure" = "device_exposure_start_date",
+    )
     x <- cdm[[tab]] %>%
       addInObservation(indexDate = date)
   } else {
@@ -220,7 +220,8 @@ summaryTable <- function(cdm, tab) {
     summarise(
       number_records = n(),
       number_concepts = n_distinct(concept_id),
-      number_persons = n_distinct(person_id)
+      number_persons = n_distinct(person_id),
+      number_in_observation = sum(in_observation, na.rm = TRUE)
     ) %>%
     collect()
 }
